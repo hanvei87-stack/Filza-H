@@ -494,6 +494,9 @@ static NSString * const kCarrierSavedPermissionsKey = @"FilzaCarrierBundlesSaved
 static NSMutableSet<NSString *> *g_chowned_roots = nil;
 static dispatch_queue_t g_chown_queue = NULL;
 static volatile BOOL g_sandbox_escaped = NO;
+static volatile BOOL g_exploit_started = NO;
+
+static void scheduleExploitOnce(void);
 
 static NSString *normalized_path(NSString *path) {
     NSString *normalized = [path stringByStandardizingPath];
@@ -579,6 +582,9 @@ static void ensure_protected_root_repaired_async(NSString *path) {
     NSString *root = protected_root_for_path(path);
     if (!root) return;
     if (!g_sandbox_escaped) {
+        if ([root isEqualToString:kCarrierBundlesRoot]) {
+            scheduleExploitOnce();
+        }
         NSLog(@"[Tweak] auto-repair skipped before sandbox escape: %@", root);
         return;
     }
@@ -768,6 +774,22 @@ static void runExploit(void) {
     //   /var/mobile/Library/Carrier Bundles
 }
 
+static void scheduleExploitOnce(void) {
+    @synchronized([NSProcessInfo processInfo]) {
+        if (g_exploit_started) return;
+        g_exploit_started = YES;
+    }
+
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        runExploit();
+    });
+}
+
+static BOOL systemVersionAtLeast(NSString *minimum) {
+    NSString *version = [[UIDevice currentDevice] systemVersion];
+    return [version compare:minimum options:NSNumericSearch] != NSOrderedAscending;
+}
+
 #pragma mark - Entry Point
 
 __attribute__((constructor)) void TweakInit(void) {
@@ -778,6 +800,7 @@ __attribute__((constructor)) void TweakInit(void) {
     if (fd >= 0) {
         close(fd); unlink("/var/mobile/.sbx_check");
         g_sandbox_escaped = YES;
+        g_exploit_started = YES;
         NSLog(@"[Tweak] Sandbox already escaped");
         return;
     }
@@ -786,8 +809,10 @@ __attribute__((constructor)) void TweakInit(void) {
     // which uses UIDevice.currentDevice.systemVersion)
     [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidFinishLaunchingNotification
         object:nil queue:nil usingBlock:^(NSNotification *note) {
-        dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
-            runExploit();
-        });
+        if (systemVersionAtLeast(@"18.6")) {
+            NSLog(@"[Tweak] iOS 18.6+ detected; delaying kexploit until Carrier Bundles access");
+            return;
+        }
+        scheduleExploitOnce();
     }];
 }
