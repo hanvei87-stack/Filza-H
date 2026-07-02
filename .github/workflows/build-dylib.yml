@@ -21,6 +21,10 @@ jobs:
           sudo xcode-select -s /Applications/Xcode.app
           xcodebuild -version
 
+      - name: Install build dependencies
+        run: |
+          brew install ldid
+
       - name: Install Theos
         run: |
           git clone --recursive https://github.com/theos/theos.git "$GITHUB_WORKSPACE/theos"
