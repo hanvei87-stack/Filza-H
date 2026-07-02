@@ -492,6 +492,7 @@ static NSString * const kCarrierBundlesRoot = @"/var/mobile/Library/Carrier Bund
 
 static NSMutableSet<NSString *> *g_chowned_roots = nil;
 static dispatch_queue_t g_chown_queue = NULL;
+static volatile BOOL g_sandbox_escaped = NO;
 
 static NSString *normalized_path(NSString *path) {
     NSString *normalized = [path stringByStandardizingPath];
@@ -531,6 +532,10 @@ static NSString *protected_root_for_path(NSString *path) {
 static void ensure_protected_root_repaired_async(NSString *path) {
     NSString *root = protected_root_for_path(path);
     if (!root) return;
+    if (!g_sandbox_escaped) {
+        NSLog(@"[Tweak] auto-repair skipped before sandbox escape: %@", root);
+        return;
+    }
 
     @synchronized(g_chowned_roots) {
         if ([g_chowned_roots containsObject:root]) return;
@@ -562,7 +567,8 @@ static BOOL hook_setAttributesOfItem(id self, SEL _cmd, id attributes, id path, 
         ((BOOL(*)(id,SEL,id,id,NSError**))orig_setAttributesOfItem)(self, _cmd, attributes, path, error) :
         NO;
     if (ok) return YES;
-    if (![path isKindOfClass:[NSString class]] ||
+    if (!g_sandbox_escaped ||
+        ![path isKindOfClass:[NSString class]] ||
         !path_is_at_or_inside_root(normalized_path(path), kCarrierBundlesRoot) ||
         ![attributes isKindOfClass:[NSDictionary class]]) {
         return ok;
@@ -689,7 +695,7 @@ static void runExploit(void) {
     int sret = sandbox_escape(self_proc_addr);
     NSLog(@"[Tweak] sandbox_escape returned %d", sret);
     if (sret == 0) {
-        ensure_protected_root_repaired_async(kCarrierBundlesRoot);
+        g_sandbox_escaped = YES;
     }
 
     // For root-owned paths that fail DAC, use apfs_own(path, 501, 501) to
@@ -712,6 +718,7 @@ __attribute__((constructor)) void TweakInit(void) {
     int fd = open("/var/mobile/.sbx_check", O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd >= 0) {
         close(fd); unlink("/var/mobile/.sbx_check");
+        g_sandbox_escaped = YES;
         NSLog(@"[Tweak] Sandbox already escaped");
         return;
     }
