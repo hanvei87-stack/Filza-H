@@ -489,6 +489,7 @@ static void hook_activationViewDidLoad(id self, SEL _cmd) {
 // so edits and permission changes can be saved from Filza as mobile.
 
 static NSString * const kCarrierBundlesRoot = @"/var/mobile/Library/Carrier Bundles";
+static NSString * const kCarrierSavedPermissionsKey = @"FilzaCarrierBundlesSavedPermissions";
 
 static NSMutableSet<NSString *> *g_chowned_roots = nil;
 static dispatch_queue_t g_chown_queue = NULL;
@@ -505,6 +506,51 @@ static NSString *normalized_path(NSString *path) {
 static BOOL path_is_at_or_inside_root(NSString *path, NSString *root) {
     if ([path isEqualToString:root]) return YES;
     return [path hasPrefix:[root stringByAppendingString:@"/"]];
+}
+
+static void remember_carrier_permission(NSString *path, mode_t mode) {
+    NSString *normalized = normalized_path(path);
+    if (!path_is_at_or_inside_root(normalized, kCarrierBundlesRoot)) return;
+
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSMutableDictionary *saved = [[defaults dictionaryForKey:kCarrierSavedPermissionsKey] mutableCopy];
+    if (!saved) saved = [NSMutableDictionary new];
+
+    [saved setObject:@((unsigned int)(mode & 07777)) forKey:normalized];
+    [defaults setObject:saved forKey:kCarrierSavedPermissionsKey];
+    [defaults synchronize];
+}
+
+static void replay_saved_carrier_permissions(void) {
+    NSDictionary *saved = [[NSUserDefaults standardUserDefaults] dictionaryForKey:kCarrierSavedPermissionsKey];
+    if (![saved isKindOfClass:[NSDictionary class]] || saved.count == 0) return;
+
+    NSArray<NSString *> *paths = [[saved allKeys] sortedArrayUsingComparator:^NSComparisonResult(NSString *a, NSString *b) {
+        if (a.length < b.length) return NSOrderedAscending;
+        if (a.length > b.length) return NSOrderedDescending;
+        return [a compare:b];
+    }];
+
+    NSUInteger applied = 0;
+    for (NSString *path in paths) {
+        if (![path isKindOfClass:[NSString class]] ||
+            !path_is_at_or_inside_root(normalized_path(path), kCarrierBundlesRoot)) {
+            continue;
+        }
+
+        NSNumber *perm = [saved objectForKey:path];
+        if (![perm isKindOfClass:[NSNumber class]]) continue;
+
+        const char *cpath = [path fileSystemRepresentation];
+        struct stat st;
+        if (lstat(cpath, &st) != 0 || S_ISLNK(st.st_mode)) continue;
+
+        apfs_own(cpath, 501, 501);
+        mode_t target = (st.st_mode & S_IFMT) | ([perm unsignedShortValue] & 07777);
+        if (apfs_mod(cpath, target) == 0) applied++;
+    }
+
+    NSLog(@"[Tweak] replayed %lu saved Carrier Bundles permissions", (unsigned long)applied);
 }
 
 // Returns the .app root path for any path inside a Bundle/Application/<UUID>/<Name>.app,
@@ -546,6 +592,7 @@ static void ensure_protected_root_repaired_async(NSString *path) {
         if ([root isEqualToString:kCarrierBundlesRoot]) {
             NSLog(@"[Tweak] auto-mobile-rw: %@", root);
             apfs_mobile_rw_tree([root UTF8String], 501, 501);
+            replay_saved_carrier_permissions();
         } else {
             NSLog(@"[Tweak] auto-chown: %@", root);
             apfs_own_tree([root UTF8String], 501, 501);
@@ -563,19 +610,30 @@ static id hook_contentsOfDirectory(id self, SEL _cmd, id path, NSError **error) 
 
 static IMP orig_setAttributesOfItem = NULL;
 static BOOL hook_setAttributesOfItem(id self, SEL _cmd, id attributes, id path, NSError **error) {
+    BOOL isCarrierPermissionChange = NO;
+    NSNumber *perm = nil;
+    NSString *normalized = nil;
+    if ([path isKindOfClass:[NSString class]] &&
+        [attributes isKindOfClass:[NSDictionary class]]) {
+        normalized = normalized_path((NSString *)path);
+        perm = [(NSDictionary *)attributes objectForKey:NSFilePosixPermissions];
+        isCarrierPermissionChange = (perm &&
+            path_is_at_or_inside_root(normalized, kCarrierBundlesRoot));
+    }
+
     BOOL ok = orig_setAttributesOfItem ?
         ((BOOL(*)(id,SEL,id,id,NSError**))orig_setAttributesOfItem)(self, _cmd, attributes, path, error) :
         NO;
-    if (ok) return YES;
+    if (ok) {
+        if (isCarrierPermissionChange) {
+            remember_carrier_permission(normalized, [perm unsignedShortValue]);
+        }
+        return YES;
+    }
     if (!g_sandbox_escaped ||
-        ![path isKindOfClass:[NSString class]] ||
-        !path_is_at_or_inside_root(normalized_path(path), kCarrierBundlesRoot) ||
-        ![attributes isKindOfClass:[NSDictionary class]]) {
+        !isCarrierPermissionChange) {
         return ok;
     }
-
-    NSNumber *perm = [(NSDictionary *)attributes objectForKey:NSFilePosixPermissions];
-    if (!perm) return ok;
 
     const char *cpath = [(NSString *)path fileSystemRepresentation];
     struct stat st;
@@ -584,6 +642,7 @@ static BOOL hook_setAttributesOfItem(id self, SEL _cmd, id attributes, id path, 
     apfs_own(cpath, 501, 501);
     mode_t target = (st.st_mode & S_IFMT) | ([perm unsignedShortValue] & 07777);
     if (apfs_mod(cpath, target) == 0) {
+        remember_carrier_permission(normalized, [perm unsignedShortValue]);
         if (error) *error = nil;
         NSLog(@"[Tweak] saved permissions via apfs_mod: %@ -> 0%o", path, target & 0xFFFF);
         return YES;
