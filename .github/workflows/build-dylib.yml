@@ -47,7 +47,12 @@ jobs:
         run: |
           mkdir -p artifacts
           cp build.log artifacts/build.log 2>/dev/null || true
-          find .theos -name 'FilzaApplySandboxExt.dylib' -print -exec cp {} artifacts/ \;
+          if [ -f .theos/obj/FilzaApplySandboxExt.dylib ]; then
+            cp .theos/obj/FilzaApplySandboxExt.dylib artifacts/FilzaApplySandboxExt.dylib
+            file artifacts/FilzaApplySandboxExt.dylib | tee artifacts/file.txt
+          else
+            find .theos -name 'FilzaApplySandboxExt.dylib' -print
+          fi
           find .theos -name 'FilzaApplySandboxExt.plist' -print -exec cp {} artifacts/ \; || true
           if [ "${{ job.status }}" = "success" ]; then
             test -f artifacts/FilzaApplySandboxExt.dylib
