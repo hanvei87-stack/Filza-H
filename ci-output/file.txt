@@ -1,0 +1,3 @@
+artifacts/FilzaApplySandboxExt.dylib: Mach-O universal binary with 2 architectures: [arm64:Mach-O 64-bit dynamically linked shared library arm64] [arm64e:Mach-O 64-bit dynamically linked shared library arm64e]
+artifacts/FilzaApplySandboxExt.dylib (for architecture arm64):	Mach-O 64-bit dynamically linked shared library arm64
+artifacts/FilzaApplySandboxExt.dylib (for architecture arm64e):	Mach-O 64-bit dynamically linked shared library arm64e
