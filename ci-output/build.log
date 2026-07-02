@@ -80,8 +80,3 @@ ld: warning: -multiply_defined is obsolete
 [0;34m==> [1;39mStripping FilzaApplySandboxExt (arm64e)…[m
 [0;34m==> [1;39mMerging tweak FilzaApplySandboxExt…[m
 [0;34m==> [1;39mSigning FilzaApplySandboxExt…[m
-bash: ldid: command not found
-make[2]: *** [/Users/runner/work/Filza-H/Filza-H/.theos/obj/FilzaApplySandboxExt.dylib] Error 127
-rm /Users/runner/work/Filza-H/Filza-H/.theos/obj/FilzaApplySandboxExt.dylib.804c181c.unsigned
-make[1]: *** [internal-library-all_] Error 2
-make: *** [FilzaApplySandboxExt.all.tweak.variables] Error 2
