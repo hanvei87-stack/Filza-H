@@ -1,0 +1,87 @@
+[0;36m==> [1;36mNotice:[m Build may be slow as Theos isn’t using all available CPU cores on this computer. Consider upgrading GNU Make: https://theos.dev/docs/parallel-building
+[1;31m> [1;3;39mMaking all for tweak FilzaApplySandboxExt…[m
+[0;32m==> [1;39mCompiling Tweak.m (arm64)…[m
+[0;32m==> [1;39mCompiling sandbox_escape.m (arm64)…[m
+[0;32m==> [1;39mCompiling apfs_own.m (arm64)…[m
+[0;32m==> [1;39mCompiling kexploit/kexploit_opa334.m (arm64)…[m
+[0;32m==> [1;39mCompiling kexploit/krw.m (arm64)…[m
+[0;32m==> [1;39mCompiling kexploit/kutils.m (arm64)…[m
+[0;32m==> [1;39mCompiling kexploit/offsets.m (arm64)…[m
+[0;32m==> [1;39mCompiling kexploit/vnode.m (arm64)…[m
+[0;32m==> [1;39mCompiling utils/file.c (arm64)…[m
+[0;32m==> [1;39mCompiling utils/hexdump.c (arm64)…[m
+[0;32m==> [1;39mCompiling utils/process.c (arm64)…[m
+[0;32m==> [1;39mCompiling kpf/patchfinder.m (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/src/xpf.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/src/common.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/src/decompress.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/src/bad_recovery.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/src/non_ppl.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/src/ppl.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/arm64.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/Base64.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/BufferedStream.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/CodeDirectory.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/CSBlob.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/DER.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/DyldSharedCache.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/Entitlements.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/Fat.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/FileStream.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/Host.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/MachO.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/MachOLoadCommand.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/MemoryStream.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/PatchFinder.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/PatchFinder_arm64.c (arm64)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/Util.c (arm64)…[m
+[0;33m==> [1;39mLinking tweak FilzaApplySandboxExt (arm64)…[m
+ld: warning: -multiply_defined is obsolete
+[0;34m==> [1;39mGenerating debug symbols for FilzaApplySandboxExt…[m
+[0;34m==> [1;39mStripping FilzaApplySandboxExt (arm64)…[m
+[0;32m==> [1;39mCompiling Tweak.m (arm64e)…[m
+[0;32m==> [1;39mCompiling sandbox_escape.m (arm64e)…[m
+[0;32m==> [1;39mCompiling apfs_own.m (arm64e)…[m
+[0;32m==> [1;39mCompiling kexploit/kexploit_opa334.m (arm64e)…[m
+[0;32m==> [1;39mCompiling kexploit/krw.m (arm64e)…[m
+[0;32m==> [1;39mCompiling kexploit/kutils.m (arm64e)…[m
+[0;32m==> [1;39mCompiling kexploit/offsets.m (arm64e)…[m
+[0;32m==> [1;39mCompiling kexploit/vnode.m (arm64e)…[m
+[0;32m==> [1;39mCompiling utils/file.c (arm64e)…[m
+[0;32m==> [1;39mCompiling utils/hexdump.c (arm64e)…[m
+[0;32m==> [1;39mCompiling utils/process.c (arm64e)…[m
+[0;32m==> [1;39mCompiling kpf/patchfinder.m (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/src/xpf.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/src/common.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/src/decompress.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/src/bad_recovery.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/src/non_ppl.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/src/ppl.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/arm64.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/Base64.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/BufferedStream.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/CodeDirectory.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/CSBlob.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/DER.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/DyldSharedCache.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/Entitlements.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/Fat.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/FileStream.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/Host.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/MachO.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/MachOLoadCommand.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/MemoryStream.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/PatchFinder.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/PatchFinder_arm64.c (arm64e)…[m
+[0;32m==> [1;39mCompiling XPF/external/ChOma/src/Util.c (arm64e)…[m
+[0;33m==> [1;39mLinking tweak FilzaApplySandboxExt (arm64e)…[m
+ld: warning: -multiply_defined is obsolete
+[0;34m==> [1;39mGenerating debug symbols for FilzaApplySandboxExt…[m
+[0;34m==> [1;39mStripping FilzaApplySandboxExt (arm64e)…[m
+[0;34m==> [1;39mMerging tweak FilzaApplySandboxExt…[m
+[0;34m==> [1;39mSigning FilzaApplySandboxExt…[m
+bash: ldid: command not found
+make[2]: *** [/Users/runner/work/Filza-H/Filza-H/.theos/obj/FilzaApplySandboxExt.dylib] Error 127
+rm /Users/runner/work/Filza-H/Filza-H/.theos/obj/FilzaApplySandboxExt.dylib.804c181c.unsigned
+make[1]: *** [internal-library-all_] Error 2
+make: *** [FilzaApplySandboxExt.all.tweak.variables] Error 2
