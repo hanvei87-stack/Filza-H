@@ -485,10 +485,10 @@ static void hook_activationViewDidLoad(id self, SEL _cmd) {
 
 // Lazy, per-root permission repair: when Filza lists any path inside a
 // protected root, fix that root once in the background. App bundles keep the
-// original owner-only repair; Carrier Bundles2 also gets owner read/write bits
+// original owner-only repair; Carrier Bundles also gets owner read/write bits
 // so edits and permission changes can be saved from Filza as mobile.
 
-static NSString * const kCarrierBundlesRoot = @"/var/mobile/Library/Carrier Bundles2";
+static NSString * const kCarrierBundlesRoot = @"/var/mobile/Library/Carrier Bundles";
 
 static NSMutableSet<NSString *> *g_chowned_roots = nil;
 static dispatch_queue_t g_chown_queue = NULL;
@@ -700,7 +700,7 @@ static void runExploit(void) {
     // first time Filza lists anything inside a protected root, the ownership
     // and permission repair fires in the background. Covered roots:
     //   /var/containers/Bundle/Application/<UUID>/<Name>.app
-    //   /var/mobile/Library/Carrier Bundles2
+    //   /var/mobile/Library/Carrier Bundles
 }
 
 #pragma mark - Entry Point
