@@ -5,6 +5,9 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-latest
@@ -52,3 +55,14 @@ jobs:
         with:
           name: FilzaApplySandboxExt-dylib
           path: artifacts/*
+
+      - name: Commit build output
+        if: always()
+        run: |
+          mkdir -p ci-output
+          cp artifacts/* ci-output/ 2>/dev/null || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ci-output
+          git commit -m "Update CI build output [skip ci]" || exit 0
+          git push
